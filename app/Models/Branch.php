@@ -14,4 +14,5 @@ class Branch extends Model
     public function stocks() { return $this->hasMany(Stock::class); }
     public function sales() { return $this->hasMany(Sale::class); }
     public function customers() { return $this->hasMany(Customer::class); }
+    public function getLogoUrlAttribute(): ?string { return $this->logo_path ? asset($this->logo_path) : null; }
 }

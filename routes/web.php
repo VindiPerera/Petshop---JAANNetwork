@@ -8,6 +8,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -35,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:branch')->group(function () {
         Route::get('/pos', [PosController::class, 'index'])->name('pos');
         Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
+        Route::get('/settings', [SettingsController::class, 'edit'])->name('settings');
+        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     });
 
     // Main admin: warehouse, branches, catalogue, GRN transfers

@@ -3,7 +3,7 @@
 @section('actions')<button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Print</button>@endsection
 
 @section('content')
-@include('partials.filters', ['dates' => true])
+@include('partials.filters', ['dates' => true, 'export' => true])
 <div class="row g-3 mb-3">
     <div class="col-md-4"><div class="card stat shadow-sm"><div class="card-body"><div class="ico ico-indigo"><i class="bi bi-graph-up-arrow"></i></div><div><div class="lbl">Revenue</div><div class="val">{{ number_format($summary->revenue, 2) }}</div></div></div></div></div>
     <div class="col-md-4"><div class="card stat shadow-sm"><div class="card-body"><div class="ico ico-green"><i class="bi bi-receipt"></i></div><div><div class="lbl">Bills</div><div class="val">{{ $summary->bills }}</div></div></div></div></div>

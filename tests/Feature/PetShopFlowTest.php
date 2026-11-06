@@ -63,16 +63,16 @@ class PetShopFlowTest extends TestCase
 
         // POS sale at Shop A
         $this->actingAs($ua)->postJson('/pos', [
-            'paid' => 500, 'payment_method' => 'cash', 'discount' => 10,
+            'payments' => [['method' => 'cash', 'amount' => 500]], 'discount' => 10,
             'items' => [['product_id' => $p1->id, 'quantity' => 2], ['product_id' => $p2->id, 'quantity' => 1]],
         ])->assertOk()->assertJson(['ok' => true]);
         $this->assertSame(6, $this->qty($a->id, $p1->id));
         $this->assertDatabaseHas('sales', ['branch_id' => $a->id, 'subtotal' => 380, 'discount' => 10, 'total' => 370]);
 
         // Cannot oversell; cannot underpay (and nothing is deducted)
-        $this->actingAs($ua)->postJson('/pos', ['paid' => 99999, 'payment_method' => 'cash',
+        $this->actingAs($ua)->postJson('/pos', ['payments' => [['method' => 'cash', 'amount' => 99999]],
             'items' => [['product_id' => $p1->id, 'quantity' => 50]]])->assertStatus(422);
-        $this->actingAs($ua)->postJson('/pos', ['paid' => 1, 'payment_method' => 'cash',
+        $this->actingAs($ua)->postJson('/pos', ['payments' => [['method' => 'cash', 'amount' => 1]],
             'items' => [['product_id' => $p1->id, 'quantity' => 1]]])->assertStatus(422);
         $this->assertSame(6, $this->qty($a->id, $p1->id));
         $this->assertSame(1, Sale::count());
@@ -95,7 +95,7 @@ class PetShopFlowTest extends TestCase
     {
         extract($this->world());
         Stock::create(['branch_id' => $a->id, 'product_id' => $p1->id, 'quantity' => 5]);
-        $this->actingAs($ua)->postJson('/pos', ['paid' => 150, 'payment_method' => 'cash',
+        $this->actingAs($ua)->postJson('/pos', ['payments' => [['method' => 'cash', 'amount' => 150]],
             'items' => [['product_id' => $p1->id, 'quantity' => 1]]])->assertOk();
         $sale = Sale::firstOrFail();
 

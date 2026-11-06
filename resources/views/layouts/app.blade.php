@@ -89,7 +89,7 @@
         #grid button:disabled { opacity: .5; }
 
         @media (max-width: 991px) { .sidebar { display: none; } main { padding: 1rem !important; } }
-        @media print { .sidebar, .no-print { display: none !important; } body { background: #fff; } .card { box-shadow: none !important; } }
+        @media print { .sidebar, .no-print, main > .d-flex:first-child { display: none !important; } body { background: #fff; } .card { box-shadow: none !important; } }
     </style>
     @stack('head')
 </head>
@@ -123,6 +123,7 @@
         <div class="section">Operations</div>
         <a class="nav-i {{ $nav('sales.*') }}" href="{{ route('sales.index') }}"><i class="bi bi-receipt"></i>Sales</a>
         <a class="nav-i {{ $nav('customers.*') }}" href="{{ route('customers.index') }}"><i class="bi bi-person-heart"></i>Customers</a>
+        @unless($u->isAdmin())<a class="nav-i {{ $nav('settings') }}" href="{{ route('settings') }}"><i class="bi bi-gear"></i>Shop Settings</a>@endunless
         <a class="nav-i {{ $nav('inventory.*') }}" href="{{ route('inventory.index') }}"><i class="bi bi-boxes"></i>Inventory</a>
 
         <div class="section">Reports</div>

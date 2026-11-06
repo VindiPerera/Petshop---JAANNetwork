@@ -3,40 +3,62 @@
 
 @section('content')
 <div class="row g-3" id="pos">
-    <div class="col-lg-7">
-        <div class="card shadow-sm">
+    <div class="col-lg-6 col-xl-7">
+        <div class="card">
             <div class="card-body">
                 <input id="search" class="form-control form-control-lg mb-3" placeholder="Search name / scan SKU and press Enter" autofocus autocomplete="off">
-                <div id="grid" class="row g-2" style="max-height:68vh;overflow:auto"></div>
+                <div id="grid" class="row g-2" style="max-height:72vh;overflow:auto"></div>
             </div>
         </div>
     </div>
-    <div class="col-lg-5">
-        <div class="card shadow-sm">
+
+    <div class="col-lg-6 col-xl-5">
+        <div class="card">
             <div class="card-body">
                 <div class="d-flex gap-2 mb-2">
                     <select id="customer" class="form-select"><option value="">Walk-in customer</option>
                         @foreach($customers as $c)<option value="{{ $c->id }}">{{ $c->name }} {{ $c->phone }}</option>@endforeach</select>
-                    <button class="btn btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#custModal"><i class="bi bi-person-plus"></i></button>
+                    <button class="btn btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#custModal" title="New customer"><i class="bi bi-person-plus"></i></button>
                 </div>
+
                 <table class="table table-sm align-middle mb-2">
-                    <thead><tr><th>Item</th><th style="width:105px">Qty</th><th class="text-end">Total</th><th></th></tr></thead>
+                    <thead><tr><th>Item</th><th style="width:78px">Qty</th><th style="width:90px">Disc.</th><th class="text-end">Total</th><th></th></tr></thead>
                     <tbody id="cart"></tbody>
                 </table>
+
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="subtotal">0.00</strong></div>
-                <div class="d-flex justify-content-between align-items-center my-1"><span>Discount</span><input id="discount" type="number" min="0" step="0.01" value="0" class="form-control form-control-sm text-end" style="width:120px"></div>
+                <div class="d-flex justify-content-between"><span>Item discounts</span><strong id="itemdisc" class="text-danger">0.00</strong></div>
+                <div class="d-flex justify-content-between align-items-center my-1"><span>Extra discount (whole bill)</span><input id="discount" type="number" min="0" step="0.01" value="0" class="form-control form-control-sm text-end" style="width:110px"></div>
                 <div class="d-flex justify-content-between fs-4 fw-bold border-top pt-2"><span>Total</span><span id="total">0.00</span></div>
-                <div class="row g-2 mt-1">
-                    <div class="col-6"><select id="method" class="form-select"><option value="cash">Cash</option><option value="card">Card</option><option value="transfer">Bank transfer</option></select></div>
-                    <div class="col-6"><input id="paid" type="number" min="0" step="0.01" class="form-control text-end" placeholder="Amount paid"></div>
+
+                <div class="mt-2 border-top pt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-semibold">Payment</span>
+                        <div>
+                            <button type="button" id="fill" class="btn btn-sm btn-outline-secondary">Exact</button>
+                            <button type="button" id="split" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Split</button>
+                        </div>
+                    </div>
+                    <div id="pays"></div>
+                    <div class="d-flex justify-content-between mt-2"><span id="balLabel">Balance due</span><strong id="balance">0.00</strong></div>
                 </div>
-                <div class="d-flex justify-content-between mt-2"><span>Change</span><strong id="change">0.00</strong></div>
+
                 <div id="err" class="text-danger small mt-2"></div>
-                <button id="pay" class="btn btn-success btn-lg w-100 mt-2" disabled><i class="bi bi-check2-circle"></i> Complete sale</button>
+                <div class="d-flex gap-2 mt-2">
+                    <button id="preview" class="btn btn-outline-secondary flex-fill" disabled><i class="bi bi-eye"></i> Preview bill</button>
+                    <button id="pay" class="btn btn-success flex-fill" disabled><i class="bi bi-printer"></i> Complete &amp; print</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+{{-- Bill preview --}}
+<div class="modal fade" id="prevModal" tabindex="-1"><div class="modal-dialog modal-sm modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Bill preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body" id="prevBody" style="font-family:'Courier New',monospace;font-size:12px"></div>
+    <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Back</button><button class="btn btn-success" id="payModal"><i class="bi bi-printer"></i> Complete &amp; print</button></div>
+</div></div></div>
 
 <div class="modal fade" id="custModal" tabindex="-1"><div class="modal-dialog"><form class="modal-content" id="custForm">
     <div class="modal-header"><h5 class="modal-title">Quick add customer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -52,79 +74,162 @@
 @push('scripts')
 <script>
 const PRODUCTS = @json($products);
+const BRANCH = @json($branchInfo);
+const CASHIER = @json($cashier);
 const csrf = document.querySelector('meta[name=csrf-token]').content;
-const cart = {}; // id -> qty
 const $ = (id) => document.getElementById(id);
-const money = (n) => Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const CUR = BRANCH.currency || 'Rs.';
+const num = (n) => Number(n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+const cart = {};                         // id -> {qty, disc}
+let pays = [{method: 'cash', amount: ''}]; // payment lines
+let busy = false;
 
+/* ---------- product grid ---------- */
 function renderGrid() {
     const q = $('search').value.trim().toLowerCase();
     const list = PRODUCTS.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
     $('grid').innerHTML = list.map(p => `
-        <div class="col-6 col-md-4"><button type="button" class="btn w-100 text-start border ${p.stock <= 0 ? 'bg-light text-muted' : 'btn-outline-dark'}" data-id="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>
-            <div class="fw-semibold small">${p.name}</div>
-            <div class="d-flex justify-content-between small"><span>${money(p.price)}</span><span class="${p.stock <= 5 ? 'text-danger' : 'text-muted'}">${p.stock} in stock</span></div>
-        </button></div>`).join('') || '<div class="text-muted p-3">No products found.</div>';
+        <div class="col-6 col-md-4"><button type="button" class="btn w-100 text-start border" data-id="${p.id}">
+            <div class="fw-semibold small">${esc(p.name)}</div>
+            <div class="d-flex justify-content-between small"><span>${num(p.price)}</span><span class="${p.stock <= 5 ? 'text-danger' : 'text-muted'}">${p.stock} left</span></div>
+        </button></div>`).join('')
+        || `<div class="text-muted p-3">${PRODUCTS.length ? 'No matching products.' : 'No stock in this shop yet. Ask the main admin to send a GRN.'}</div>`;
 }
 
 function add(id) {
     const p = byId[id]; if (!p) return;
-    if ((cart[id] || 0) + 1 > p.stock) { $('err').textContent = `Only ${p.stock} of "${p.name}" in stock.`; return; }
-    $('err').textContent = ''; cart[id] = (cart[id] || 0) + 1; renderCart();
+    const line = cart[id] || (cart[id] = {qty: 0, disc: 0});
+    if (line.qty + 1 > p.stock) { $('err').textContent = `Only ${p.stock} of "${p.name}" in stock.`; if (!line.qty) delete cart[id]; return; }
+    $('err').textContent = ''; line.qty++; renderCart();
 }
+
+/* ---------- cart ---------- */
+const lineGross = (id) => byId[id].price * cart[id].qty;
+const lineDisc = (id) => Math.min(Math.max(+cart[id].disc || 0, 0), lineGross(id));
 
 function renderCart() {
     const ids = Object.keys(cart);
     $('cart').innerHTML = ids.map(id => { const p = byId[id];
-        return `<tr><td class="small">${p.name}<div class="text-muted">${money(p.price)}</div></td>
-        <td><input type="number" min="1" max="${p.stock}" value="${cart[id]}" data-qty="${id}" class="form-control form-control-sm"></td>
-        <td class="text-end">${money(p.price * cart[id])}</td>
+        return `<tr><td class="small">${esc(p.name)}<div class="text-muted">${num(p.price)}</div></td>
+        <td><input type="number" min="1" max="${p.stock}" value="${cart[id].qty}" data-qty="${id}" class="form-control form-control-sm px-1"></td>
+        <td><input type="number" min="0" step="0.01" value="${cart[id].disc || ''}" placeholder="0" data-disc="${id}" class="form-control form-control-sm px-1 text-end"></td>
+        <td class="text-end">${num(lineGross(id) - lineDisc(id))}</td>
         <td><button type="button" class="btn btn-sm text-danger" data-rm="${id}">&times;</button></td></tr>`; }).join('')
-        || '<tr><td colspan="4" class="text-center text-muted py-3">Cart is empty</td></tr>';
+        || '<tr><td colspan="5" class="text-center text-muted py-3">Cart is empty</td></tr>';
     totals();
 }
 
-function totals() {
-    const sub = Object.entries(cart).reduce((s, [id, q]) => s + byId[id].price * q, 0);
-    const disc = Math.min(parseFloat($('discount').value) || 0, sub);
-    const total = sub - disc, paid = parseFloat($('paid').value) || 0;
-    $('subtotal').textContent = money(sub); $('total').textContent = money(total);
-    $('change').textContent = money(Math.max(paid - total, 0));
-    $('pay').disabled = !(total > 0 && paid >= total);
-    return {sub, disc, total};
+function calc() {
+    const ids = Object.keys(cart);
+    const gross = ids.reduce((s, id) => s + lineGross(id), 0);
+    const itemDisc = ids.reduce((s, id) => s + lineDisc(id), 0);
+    const net = gross - itemDisc;
+    const extra = Math.min(Math.max(parseFloat($('discount').value) || 0, 0), net);
+    return {gross, itemDisc, extra, total: Math.round((net - extra) * 100) / 100};
 }
 
+/* ---------- payments ---------- */
+function renderPays() {
+    $('pays').innerHTML = pays.map((p, i) => `
+        <div class="input-group input-group-sm mb-1">
+            <select class="form-select" data-pm="${i}" style="max-width:130px">
+                ${['cash','card','transfer'].map(m => `<option value="${m}" ${p.method === m ? 'selected' : ''}>${m[0].toUpperCase() + m.slice(1)}</option>`).join('')}
+            </select>
+            <input type="number" min="0" step="0.01" class="form-control text-end" data-pa="${i}" value="${p.amount}" placeholder="Amount">
+            ${pays.length > 1 ? `<button type="button" class="btn btn-outline-danger" data-prm="${i}">&times;</button>` : ''}
+        </div>`).join('');
+}
+
+function paidSum() { return pays.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0); }
+
+function totals() {
+    const c = calc(), paid = paidSum();
+    $('subtotal').textContent = num(c.gross); $('itemdisc').textContent = '-' + num(c.itemDisc); $('total').textContent = num(c.total);
+    const diff = Math.round((paid - c.total) * 100) / 100;
+    $('balLabel').textContent = diff >= 0 ? 'Change' : 'Balance due';
+    $('balance').textContent = num(Math.abs(diff));
+    $('balance').className = diff >= 0 ? 'text-success' : 'text-danger';
+    const ok = c.total > 0 && diff >= 0 && !busy;
+    $('pay').disabled = !ok; $('payModal').disabled = !ok; $('preview').disabled = !(c.total > 0);
+    return c;
+}
+
+/* ---------- bill preview ---------- */
+function previewHtml() {
+    const c = calc(), ids = Object.keys(cart), paid = paidSum();
+    const m = (n) => `${esc(CUR)} ${num(n)}`;
+    const cash = pays.filter(p => p.method === 'cash').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const row = (a, b, cls = '') => `<div class="d-flex justify-content-between ${cls}"><span>${a}</span><span>${b}</span></div>`;
+    return `<div class="text-center">${BRANCH.logo ? `<img src="${esc(BRANCH.logo)}" style="max-width:110px;max-height:60px"><br>` : ''}
+        <div class="fw-bold" style="font-size:14px">${esc(BRANCH.name)}</div>
+        ${BRANCH.address ? `<div>${esc(BRANCH.address)}</div>` : ''}${BRANCH.phone ? `<div>Tel: ${esc(BRANCH.phone)}</div>` : ''}
+        ${BRANCH.email ? `<div>${esc(BRANCH.email)}</div>` : ''}${BRANCH.tax_no ? `<div>Tax/VAT No: ${esc(BRANCH.tax_no)}</div>` : ''}</div><hr class="my-1">
+        ${row('Date', new Date().toLocaleString())}${row('Cashier', esc(CASHIER))}
+        ${row('Customer', esc($('customer').selectedOptions[0].text.trim() || 'Walk-in'))}<hr class="my-1">
+        ${ids.map(id => { const p = byId[id], l = cart[id];
+            return row(`${esc(p.name)}<br>&nbsp;&nbsp;${l.qty} x ${num(p.price)}`, num(lineGross(id)))
+                 + (lineDisc(id) > 0 ? row('&nbsp;&nbsp;Discount', '-' + num(lineDisc(id))) : ''); }).join('')}<hr class="my-1">
+        ${row('Subtotal', m(c.gross))}${c.itemDisc + c.extra > 0 ? row('Total discount', '-' + m(c.itemDisc + c.extra)) : ''}
+        ${row('TOTAL', m(c.total), 'fw-bold fs-6')}<hr class="my-1">
+        ${pays.filter(p => parseFloat(p.amount) > 0).map(p => row(`Paid (${p.method})`, m(parseFloat(p.amount)))).join('')}
+        ${paid - c.total > 0 ? row('Change', m(paid - c.total)) : ''}<hr class="my-1">
+        <div class="text-center">${esc(BRANCH.receipt_footer || 'Thank you for shopping with us!')}</div>`;
+}
+
+/* ---------- events ---------- */
 $('grid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) add(+b.dataset.id); });
 $('cart').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { delete cart[b.dataset.rm]; renderCart(); } });
 $('cart').addEventListener('change', e => {
-    const id = e.target.dataset.qty; if (!id) return;
-    const q = Math.max(1, Math.min(parseInt(e.target.value) || 1, byId[id].stock)); cart[id] = q; renderCart();
+    const q = e.target.dataset.qty, d = e.target.dataset.disc;
+    if (q) cart[q].qty = Math.max(1, Math.min(parseInt(e.target.value) || 1, byId[q].stock));
+    if (d) cart[d].disc = Math.max(parseFloat(e.target.value) || 0, 0);
+    renderCart();
 });
 $('search').addEventListener('input', renderGrid);
-$('search').addEventListener('keydown', e => { // Enter on an exact SKU adds it (barcode scanners)
+$('search').addEventListener('keydown', e => { // Enter on an exact SKU / single match adds it (barcode scanners)
     if (e.key !== 'Enter') return; e.preventDefault();
-    const q = e.target.value.trim().toLowerCase();
-    const hit = PRODUCTS.find(p => p.sku.toLowerCase() === q) || (PRODUCTS.filter(p => p.name.toLowerCase().includes(q)).length === 1 ? PRODUCTS.find(p => p.name.toLowerCase().includes(q)) : null);
+    const q = e.target.value.trim().toLowerCase(); if (!q) return;
+    const matches = PRODUCTS.filter(p => p.name.toLowerCase().includes(q));
+    const hit = PRODUCTS.find(p => p.sku.toLowerCase() === q) || (matches.length === 1 ? matches[0] : null);
     if (hit) { add(hit.id); e.target.value = ''; renderGrid(); }
 });
-['discount', 'paid'].forEach(id => $(id).addEventListener('input', totals));
+$('discount').addEventListener('input', totals);
 
-$('pay').addEventListener('click', async () => {
-    const {total} = totals(); $('pay').disabled = true; $('err').textContent = '';
+$('pays').addEventListener('input', e => { const i = e.target.dataset.pa; if (i !== undefined) { pays[i].amount = e.target.value; totals(); } });
+$('pays').addEventListener('change', e => { const i = e.target.dataset.pm; if (i !== undefined) pays[i].method = e.target.value; });
+$('pays').addEventListener('click', e => { const b = e.target.closest('[data-prm]'); if (b) { pays.splice(+b.dataset.prm, 1); renderPays(); totals(); } });
+$('split').addEventListener('click', () => {
+    const rest = Math.max(calc().total - paidSum(), 0);
+    pays.push({method: pays.some(p => p.method === 'cash') ? 'card' : 'cash', amount: rest ? rest.toFixed(2) : ''});
+    renderPays(); totals();
+});
+$('fill').addEventListener('click', () => { // put the remaining amount on the last payment line
+    const last = pays[pays.length - 1]; const others = paidSum() - (parseFloat(last.amount) || 0);
+    last.amount = Math.max(calc().total - others, 0).toFixed(2); renderPays(); totals();
+});
+
+$('preview').addEventListener('click', () => { $('prevBody').innerHTML = previewHtml(); new bootstrap.Modal($('prevModal')).show(); });
+
+async function complete() {
+    if (busy) return; busy = true; totals(); $('err').textContent = '';
+    bootstrap.Modal.getInstance($('prevModal'))?.hide();
     const res = await fetch("{{ route('pos.store') }}", {
         method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
         body: JSON.stringify({
-            customer_id: $('customer').value || null, discount: parseFloat($('discount').value) || 0,
-            paid: parseFloat($('paid').value) || 0, payment_method: $('method').value,
-            items: Object.entries(cart).map(([id, q]) => ({product_id: +id, quantity: q})),
+            customer_id: $('customer').value || null, discount: calc().extra,
+            items: Object.keys(cart).map(id => ({product_id: +id, quantity: cart[id].qty, discount: lineDisc(id)})),
+            payments: pays.filter(p => parseFloat(p.amount) > 0).map(p => ({method: p.method, amount: parseFloat(p.amount)})),
         }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.url) { window.location = data.url; return; }
+    if (res.ok && data.url) { window.location = data.url; return; }  // receipt page opens the print dialog
     $('err').textContent = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Sale failed.');
-    $('pay').disabled = false;
-});
+    busy = false; totals();
+}
+$('pay').addEventListener('click', complete);
+$('payModal').addEventListener('click', complete);
 
 $('custForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -137,6 +242,6 @@ $('custForm').addEventListener('submit', async e => {
     bootstrap.Modal.getInstance($('custModal')).hide(); e.target.reset();
 });
 
-renderGrid(); renderCart();
+renderGrid(); renderPays(); renderCart();
 </script>
 @endpush

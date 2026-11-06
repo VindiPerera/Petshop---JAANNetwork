@@ -17,6 +17,12 @@ abstract class Controller
         return $request->filled('branch_id') ? (int) $request->input('branch_id') : null;
     }
 
+    /** 'pdf' | 'xlsx' when the request asks for a download, otherwise null. */
+    protected function exportFormat(Request $request): ?string
+    {
+        return in_array($request->input('export'), ['pdf', 'xlsx'], true) ? $request->input('export') : null;
+    }
+
     protected function branchOptions()
     {
         return Branch::orderBy('type')->orderBy('name')->get();

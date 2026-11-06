@@ -3,7 +3,7 @@
 @section('actions')<button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Print</button>@endsection
 
 @section('content')
-@include('partials.filters')
+@include('partials.filters', ['export' => true])
 <div class="card shadow-sm"><table class="table mb-0">
     <thead><tr><th>Location</th><th>Type</th><th class="text-end">Units</th><th class="text-end">Value at cost</th><th class="text-end">Value at retail</th></tr></thead>
     @forelse($rows as $r)

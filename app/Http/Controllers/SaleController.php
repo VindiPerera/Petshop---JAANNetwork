@@ -22,7 +22,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         abort_unless($request->user()->isAdmin() || $sale->branch_id === $request->user()->branch_id, 403);
-        $sale->load('branch', 'customer', 'user', 'items.product');
+        $sale->load('branch', 'customer', 'user', 'items.product', 'payments');
         return view('sales.show', compact('sale'));
     }
 }

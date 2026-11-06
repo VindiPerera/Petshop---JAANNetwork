@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Inventory')
-@section('actions')<a href="{{ route('inventory.movements', request()->only('branch_id')) }}" class="btn btn-outline-secondary">Stock movements</a>@endsection
+@section('actions')
+    <a class="btn btn-outline-danger" href="{{ url()->current().'?'.http_build_query(request()->except(['export', 'page']) + ['export' => 'pdf']) }}"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    <a class="btn btn-outline-success" href="{{ url()->current().'?'.http_build_query(request()->except(['export', 'page']) + ['export' => 'xlsx']) }}"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    <a href="{{ route('inventory.movements', request()->only('branch_id')) }}" class="btn btn-outline-secondary">Stock movements</a>
+@endsection
 
 @section('content')
 <form class="card shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
@@ -14,6 +18,7 @@
             @foreach($categories as $c)<option value="{{ $c->id }}" @selected(request('category_id') == $c->id)>{{ $c->name }}</option>@endforeach</select></div>
     <div class="col-md-3"><label class="form-label small mb-0">Search</label><input name="q" value="{{ request('q') }}" class="form-control form-control-sm"></div>
     <div class="col-auto form-check ms-2 mb-1"><input type="checkbox" class="form-check-input" name="low" value="1" id="low" @checked(request()->boolean('low'))><label for="low" class="form-check-label small">Low stock only</label></div>
+    <div class="col-auto form-check ms-2 mb-1"><input type="checkbox" class="form-check-input" name="in_stock" value="1" id="ins" @checked(request()->boolean('in_stock'))><label for="ins" class="form-check-label small">Hide out of stock</label></div>
     <div class="col-auto"><button class="btn btn-sm btn-primary">Filter</button> <a href="{{ url()->current() }}" class="btn btn-sm btn-link">Reset</a></div>
 </div></form>
 
