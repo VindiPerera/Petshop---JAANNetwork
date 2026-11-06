@@ -24,7 +24,7 @@ class PosController extends Controller
 
         $products = Product::with('category')->where('is_active', true)->whereIn('id', $stock->keys())->orderBy('name')->get()
             ->map(fn ($p) => [
-                'id' => $p->id, 'sku' => $p->sku, 'name' => $p->name, 'category' => $p->category?->name,
+                'id' => $p->id, 'sku' => $p->sku, 'barcode' => (string) $p->barcode, 'name' => $p->name, 'category' => $p->category?->name,
                 'price' => (float) $p->sale_price, 'stock' => (int) $stock[$p->id],
             ])->values();
 

@@ -24,6 +24,7 @@
     .receipt .r { text-align: right; font-variant-numeric: tabular-nums; }
     .receipt .row2 { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; padding: 1px 0; }
     .receipt .total { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 2px; padding: 7px 8px; background: #111827; color: #fff; border-radius: 6px; font-size: 14px; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .receipt .inv-bc svg { width: 100%; height: 38px; }
     .receipt .foot { text-align: center; margin-top: 4px; font-weight: 500; }
     @media print {
         @page { size: 80mm auto; margin: 3mm; }
@@ -73,7 +74,8 @@
     @endif
     <hr>
     <div class="foot">{{ $b->receipt_footer ?: 'Thank you for shopping with us!' }}</div>
-    <div class="c muted" style="margin-top:2px">Powered by JAAN Network</div>
+    <div class="c" style="margin-top:8px"><div class="inv-bc">{!! \App\Services\BarcodeService::svg($sale->invoice_no, 40, 1) !!}</div><div class="muted" style="letter-spacing:.08em">{{ $sale->invoice_no }}</div></div>
+    <div class="c muted" style="margin-top:6px">Powered by JAAN Network</div>
 </div>
 @endsection
 

@@ -16,7 +16,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = Product::with('category')
-            ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('sku', 'like', "%$s%")))
+            ->when($request->q, fn ($q, $s) => $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('sku', 'like', "%$s%")->orWhere('barcode', 'like', "%$s%")))
             ->orderBy('name')->paginate(25)->withQueryString();
         $whStock = Stock::where('branch_id', Branch::warehouse()->id)->pluck('quantity', 'product_id');
         return view('admin.products.index', compact('products', 'whStock'));
@@ -27,7 +27,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $data = $this->rules($request);
-        $opening = (int) $request->validate(['opening_qty' => 'nullable|integer|min:0'])['opening_qty'];
+        $opening = (int) ($request->validate(['opening_qty' => 'nullable|integer|min:0'])['opening_qty'] ?? 0);
 
         DB::transaction(function () use ($data, $opening, $request) {
             $product = Product::create($data + ['is_active' => true]);
@@ -50,6 +50,7 @@ class ProductController extends Controller
     {
         return $request->validate([
             'sku' => 'required|string|max:50|unique:products,sku,'.$id,
+            'barcode' => 'nullable|string|max:40|unique:products,barcode,'.$id,
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
             'unit' => 'required|string|max:20',
