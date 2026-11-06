@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
@@ -27,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+    Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes.index');
+    Route::post('/barcodes/print', [BarcodeController::class, 'print'])->name('barcodes.print');
     Route::resource('customers', CustomerController::class)->except('destroy');
     Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
     Route::get('/reports/profit', [ReportController::class, 'profit'])->name('reports.profit');

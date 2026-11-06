@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        label.req::after, th.req::after { content: ' *'; color: #dc2626; font-weight: 700; }
         :root {
             --brand: #6366f1; --brand-dark: #4f46e5; --brand-soft: #eef2ff;
             --ink: #0f172a; --muted: #64748b; --line: #e8ecf3; --bg: #f5f7fb;
@@ -128,6 +129,7 @@
         <a class="nav-i {{ $nav('customers.*') }}" href="{{ route('customers.index') }}"><i class="bi bi-person-heart"></i>Customers</a>
         @unless($u->isAdmin())<a class="nav-i {{ $nav('settings') }}" href="{{ route('settings') }}"><i class="bi bi-gear"></i>Shop Settings</a>@endunless
         <a class="nav-i {{ $nav('inventory.*') }}" href="{{ route('inventory.index') }}"><i class="bi bi-boxes"></i>Inventory</a>
+        <a class="nav-i {{ $nav('barcodes.*') }}" href="{{ route('barcodes.index') }}"><i class="bi bi-upc-scan"></i>Barcode Labels</a>
 
         <div class="section">Reports</div>
         <a class="nav-i {{ $nav('reports.sales') }}" href="{{ route('reports.sales') }}"><i class="bi bi-graph-up"></i>Sales Report</a>
@@ -152,6 +154,7 @@
     </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ asset('js/required-marks.js') }}"></script>
 @stack('scripts')
 </body>
 </html>

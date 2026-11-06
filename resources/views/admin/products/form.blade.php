@@ -5,7 +5,11 @@
 <form method="post" action="{{ $product->exists ? route('admin.products.update', $product) : route('admin.products.store') }}" class="card shadow-sm" style="max-width:760px">
     @csrf @if($product->exists) @method('PUT') @endif
     <div class="card-body row g-3">
-        <div class="col-md-4"><label class="form-label">SKU / Barcode</label><input name="sku" class="form-control" value="{{ old('sku', $product->sku) }}" required></div>
+        <div class="col-md-4"><label class="form-label">SKU</label><input name="sku" class="form-control" value="{{ old('sku', $product->sku) }}" required></div>
+        <div class="col-md-12"><label class="form-label">Barcode</label>
+            <div class="input-group" style="max-width:420px"><input name="barcode" class="form-control" value="{{ old('barcode', $product->barcode) }}" placeholder="Leave empty to auto-generate">
+                @if($product->exists)<a class="btn btn-outline-secondary" href="{{ route('barcodes.index', ['product' => $product->id]) }}"><i class="bi bi-printer"></i> Print</a>@endif</div>
+            <div class="form-text">Auto-generated (EAN-13) for new products. Type the manufacturer barcode instead if the product already has one.</div></div>
         <div class="col-md-8"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ old('name', $product->name) }}" required></div>
         <div class="col-md-6"><label class="form-label">Category</label>
             <select name="category_id" class="form-select"><option value="">—</option>

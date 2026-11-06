@@ -6,7 +6,7 @@
     <div class="col-lg-6 col-xl-7">
         <div class="card">
             <div class="card-body">
-                <input id="search" class="form-control form-control-lg mb-3" placeholder="Search name / scan SKU and press Enter" autofocus autocomplete="off">
+                <input id="search" class="form-control form-control-lg mb-3" placeholder="Search name / scan barcode / SKU and press Enter" autofocus autocomplete="off">
                 <div id="grid" class="row g-2" style="max-height:72vh;overflow:auto"></div>
             </div>
         </div>
@@ -63,7 +63,7 @@
 <div class="modal fade" id="custModal" tabindex="-1"><div class="modal-dialog"><form class="modal-content" id="custForm">
     <div class="modal-header"><h5 class="modal-title">Quick add customer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body row g-2">
-        <div class="col-12"><input name="name" class="form-control" placeholder="Name" required></div>
+        <div class="col-12"><input name="name" class="form-control" placeholder="Name *" required></div>
         <div class="col-6"><input name="phone" class="form-control" placeholder="Phone"></div>
         <div class="col-6"><input name="pet_name" class="form-control" placeholder="Pet name"></div>
     </div>
@@ -89,7 +89,7 @@ let busy = false;
 /* ---------- product grid ---------- */
 function renderGrid() {
     const q = $('search').value.trim().toLowerCase();
-    const list = PRODUCTS.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    const list = PRODUCTS.filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.barcode || '').includes(q));
     $('grid').innerHTML = list.map(p => `
         <div class="col-6 col-md-4"><button type="button" class="btn w-100 text-start border" data-id="${p.id}">
             <div class="fw-semibold small">${esc(p.name)}</div>
@@ -192,7 +192,7 @@ $('search').addEventListener('keydown', e => { // Enter on an exact SKU / single
     if (e.key !== 'Enter') return; e.preventDefault();
     const q = e.target.value.trim().toLowerCase(); if (!q) return;
     const matches = PRODUCTS.filter(p => p.name.toLowerCase().includes(q));
-    const hit = PRODUCTS.find(p => p.sku.toLowerCase() === q) || (matches.length === 1 ? matches[0] : null);
+    const hit = PRODUCTS.find(p => p.sku.toLowerCase() === q || p.barcode === q) || (matches.length === 1 ? matches[0] : null);
     if (hit) { add(hit.id); e.target.value = ''; renderGrid(); }
 });
 $('discount').addEventListener('input', totals);

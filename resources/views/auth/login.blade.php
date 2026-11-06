@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="{{ asset("images/logo.png") }}">
     <style>
+        label.req::after, th.req::after { content: ' *'; color: #dc2626; font-weight: 700; }
         body { font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; margin: 0; }
         .split { display: flex; min-height: 100vh; }
         .hero { flex: 1.1; background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 55%, #6366f1 100%); color: #fff; display: flex; flex-direction: column; justify-content: center; padding: 4rem; position: relative; overflow: hidden; }
@@ -62,5 +63,6 @@
         </div>
     </div>
 </div>
+<script src="{{ asset('js/required-marks.js') }}"></script>
 </body>
 </html>
