@@ -15,6 +15,9 @@
         <div class="col-md-3"><label class="form-label">Reorder level</label><input type="number" min="0" name="reorder_level" class="form-control" value="{{ old('reorder_level', $product->reorder_level) }}" required></div>
         <div class="col-md-6"><label class="form-label">Cost price</label><input type="number" step="0.01" min="0" name="cost_price" class="form-control" value="{{ old('cost_price', $product->cost_price) }}" required></div>
         <div class="col-md-6"><label class="form-label">Sale price</label><input type="number" step="0.01" min="0" name="sale_price" class="form-control" value="{{ old('sale_price', $product->sale_price) }}" required></div>
+        @unless($product->exists)
+            <div class="col-md-6"><label class="form-label">Opening warehouse quantity (optional)</label><input type="number" min="0" name="opening_qty" class="form-control" value="{{ old('opening_qty', 0) }}"><div class="form-text">For stock already in the warehouse. Use Receive Stock for new deliveries.</div></div>
+        @endunless
         @if($product->exists)
             <div class="col-12 form-check ms-2"><input type="checkbox" class="form-check-input" name="is_active" value="1" id="a" @checked(old('is_active', $product->is_active))><label class="form-check-label" for="a">Active (available for sale/transfer)</label></div>
         @endif

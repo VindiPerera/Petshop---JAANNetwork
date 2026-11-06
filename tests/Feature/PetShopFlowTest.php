@@ -121,4 +121,16 @@ class PetShopFlowTest extends TestCase
         $this->assertSame('KDY', auth()->user()->branch->code);
         $this->get('/dashboard')->assertOk();
     }
+
+    public function test_new_product_can_have_opening_warehouse_stock(): void
+    {
+        extract($this->world());
+        $this->actingAs($admin)->post('/admin/products', [
+            'sku' => 'NEW1', 'name' => 'Leash', 'unit' => 'pcs', 'cost_price' => 10, 'sale_price' => 20,
+            'reorder_level' => 2, 'opening_qty' => 15,
+        ])->assertRedirect();
+        $id = Product::where('sku', 'NEW1')->value('id');
+        $this->assertSame(15, $this->qty($wh->id, $id));
+        $this->actingAs($admin)->get('/admin/products')->assertOk()->assertSee('Warehouse qty')->assertSee('15');
+    }
 }
