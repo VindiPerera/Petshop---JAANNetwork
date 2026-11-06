@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') · {{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset("images/logo.png") }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,6 +24,8 @@
         .sidebar { width: 252px; height: 100vh; position: sticky; top: 0; overflow-y: auto; background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); padding: .75rem .75rem 1rem; }
         .sidebar .brand { display: flex; align-items: center; gap: .6rem; color: #fff; font-weight: 700; font-size: 1.1rem; padding: .6rem .5rem; }
         .sidebar .brand span.logo { width: 38px; height: 38px; border-radius: 11px; background: rgba(255,255,255,.14); display: grid; place-items: center; font-size: 1.2rem; }
+        .sidebar .brand-logo { background: #fff; border-radius: .8rem; padding: .5rem .6rem; margin-bottom: .4rem; }
+        .sidebar .brand-logo img { width: 100%; height: auto; display: block; }
         .sidebar .me { margin: .4rem 0 .6rem; padding: .65rem .8rem; border-radius: .8rem; background: rgba(255,255,255,.08); color: #fff; font-size: .8rem; line-height: 1.3; }
         .sidebar .me small { color: #a5b4fc; }
         .sidebar a.nav-i { color: #c7d2fe; text-decoration: none; padding: .52rem .8rem; display: flex; align-items: center; gap: .65rem; border-radius: .6rem; margin-bottom: 2px; transition: all .15s; }
@@ -100,7 +103,7 @@
 @endphp
 <div class="d-flex">
     <nav class="sidebar flex-shrink-0 no-print">
-        <div class="brand"><span class="logo">🐾</span> {{ config("app.name") }}</div>
+        <div class="brand-logo"><img src="{{ asset("images/logo.png") }}" alt="{{ config("app.name") }}"></div>
         <div class="me"><strong>{{ $u->name }}</strong><br><small>{{ $u->isAdmin() ? "Main Admin" : $u->branch->name }}</small></div>
 
         <a class="nav-i {{ $nav('dashboard') }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2"></i>Dashboard</a>

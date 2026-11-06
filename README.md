@@ -1,4 +1,4 @@
-# Pet Shop — Warehouse, Branch & POS (Laravel 13 + MySQL)
+# Surathala.com — Warehouse, Branch & POS (Laravel 13 + MySQL)
 
 ## Run it
 Double-click `start-petshop.bat` (starts MySQL on port 3307 + `php artisan serve`), then open http://127.0.0.1:8000

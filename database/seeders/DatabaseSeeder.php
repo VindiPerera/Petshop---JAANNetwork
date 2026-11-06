@@ -14,14 +14,14 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $warehouse = Branch::firstOrCreate(['code' => 'WH'], ['name' => 'Main Warehouse', 'type' => 'warehouse']);
+        $warehouse = Branch::firstOrCreate(['code' => 'WH'], ['name' => 'Surathala Main Warehouse', 'type' => 'warehouse']);
 
         User::firstOrCreate(['email' => 'admin@petshop.test'], [
             'name' => 'Main Admin', 'password' => 'password', 'role' => 'admin',
         ]);
 
         // Demo data (safe to delete): one shop with a login, sample catalogue.
-        $shop = Branch::firstOrCreate(['code' => 'CMB'], ['name' => 'Colombo Shop', 'type' => 'shop', 'address' => 'Colombo']);
+        $shop = Branch::firstOrCreate(['code' => 'CMB'], ['name' => 'Surathala Ekala', 'type' => 'shop', 'address' => '357, Orex City complex, Ekala.', 'email' => 'info@surathala.com']);
         User::firstOrCreate(['email' => 'colombo@petshop.test'], [
             'name' => 'Colombo Cashier', 'password' => 'password', 'role' => 'branch', 'branch_id' => $shop->id,
         ]);

@@ -162,7 +162,7 @@ function previewHtml() {
     const m = (n) => `${esc(CUR)} ${num(n)}`;
     const cash = pays.filter(p => p.method === 'cash').reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const row = (a, b, cls = '') => `<div class="d-flex justify-content-between ${cls}"><span>${a}</span><span>${b}</span></div>`;
-    return `<div class="text-center">${BRANCH.logo ? `<img src="${esc(BRANCH.logo)}" style="max-width:110px;max-height:60px"><br>` : ''}
+    return `<div style="font-family:Inter,system-ui,sans-serif;font-size:12px;line-height:1.5" class="text-center">${BRANCH.logo ? `<img src="${esc(BRANCH.logo)}" style="width:100%;max-height:90px;object-fit:contain"><br>` : ''}
         <div class="fw-bold" style="font-size:14px">${esc(BRANCH.name)}</div>
         ${BRANCH.address ? `<div>${esc(BRANCH.address)}</div>` : ''}${BRANCH.phone ? `<div>Tel: ${esc(BRANCH.phone)}</div>` : ''}
         ${BRANCH.email ? `<div>${esc(BRANCH.email)}</div>` : ''}${BRANCH.tax_no ? `<div>Tax/VAT No: ${esc(BRANCH.tax_no)}</div>` : ''}</div><hr class="my-1">
