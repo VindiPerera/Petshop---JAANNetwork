@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
@@ -31,7 +32,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
     Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes.index');
     Route::post('/barcodes/print', [BarcodeController::class, 'print'])->name('barcodes.print');
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::resource('expenses', ExpenseController::class)->except('show');
+    Route::get('/orders',[OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\Expense;
 use App\Services\Exporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,16 +89,27 @@ class ReportController extends Controller
             ->join('branches', 'branches.id', '=', 'sales.branch_id')
             ->when($branchId, fn ($q) => $q->where('sales.branch_id', $branchId))
             ->whereDate('sales.created_at', '>=', $from)->whereDate('sales.created_at', '<=', $to)
-            ->selectRaw('branches.name, SUM(sale_items.line_total) as revenue, SUM(sale_items.quantity * sale_items.unit_cost) as cost')
-            ->groupBy('branches.id', 'branches.name')->get();
+            ->selectRaw('branches.id as branch_id, branches.name, SUM(sale_items.line_total) as revenue, SUM(sale_items.quantity * sale_items.unit_cost) as cost')
+            ->groupBy('branches.id', 'branches.name')->get()->keyBy('branch_id');
+
+        // Running expenses falling in the period (range expenses are spread evenly over their days).
+        $expenseByBranch = Expense::overlapping($from, $to)->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->get()
+            ->groupBy('branch_id')->map(fn ($g) => round($g->sum(fn ($e) => $e->allocatedBetween($from, $to)), 2));
+        foreach ($expenseByBranch->keys()->diff($rows->keys()) as $id) { // locations with expenses but no sales still count
+            $rows[$id] = (object) ['branch_id' => $id, 'name' => Branch::find($id)->name, 'revenue' => 0, 'cost' => 0];
+        }
+        $rows = $rows->map(function ($r) use ($expenseByBranch) {
+            $r->expenses = (float) ($expenseByBranch[$r->branch_id] ?? 0);
+            return $r;
+        })->sortBy('name')->values();
 
         if ($fmt = $this->exportFormat($request)) {
-            $rev = (float) $rows->sum('revenue'); $cost = (float) $rows->sum('cost');
+            $rev = (float) $rows->sum('revenue'); $cost = (float) $rows->sum('cost'); $exp = (float) $rows->sum('expenses');
             $sections = [[
-                'heading' => 'Profit by branch', 'columns' => ['Branch', 'Revenue', 'Cost of goods', 'Gross profit', 'Margin %'],
-                'align' => ['left', 'right', 'right', 'right', 'right'],
-                'rows' => $rows->map(fn ($r) => [$r->name, (float) $r->revenue, (float) $r->cost, (float) ($r->revenue - $r->cost), $r->revenue > 0 ? round(($r->revenue - $r->cost) / $r->revenue * 100, 1) : 0.0])->all(),
-                'totals' => ['Total', $rev, $cost, $rev - $cost, $rev > 0 ? round(($rev - $cost) / $rev * 100, 1) : 0.0],
+                'heading' => 'Profit by branch', 'columns' => ['Branch', 'Revenue', 'Cost of goods', 'Gross profit', 'Margin %', 'Expenses', 'Net profit'],
+                'align' => ['left', 'right', 'right', 'right', 'right', 'right', 'right'],
+                'rows' => $rows->map(fn ($r) => [$r->name, (float) $r->revenue, (float) $r->cost, (float) ($r->revenue - $r->cost), $r->revenue > 0 ? round(($r->revenue - $r->cost) / $r->revenue * 100, 1) : 0.0, $r->expenses, (float) ($r->revenue - $r->cost - $r->expenses)])->all(),
+                'totals' => ['Total', $rev, $cost, $rev - $cost, $rev > 0 ? round(($rev - $cost) / $rev * 100, 1) : 0.0, $exp, $rev - $cost - $exp],
             ]];
             return Exporter::download($fmt, 'Profit Report', $this->subtitle($branchId, $from, $to), $sections, "profit-report-$from-to-$to");
         }

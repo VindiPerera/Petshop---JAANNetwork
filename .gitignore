@@ -25,3 +25,5 @@ Thumbs.db
 
 /.mysql-data
 config.bat
+
+/.env
