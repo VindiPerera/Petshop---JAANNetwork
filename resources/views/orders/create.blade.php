@@ -26,14 +26,15 @@
         </div>
 
         <table class="table align-middle" id="items-table">
-            <thead><tr><th>Product</th><th class="text-end" style="width:100px">Available</th><th style="width:120px">Quantity</th><th style="width:150px">Unit price</th><th class="text-end" style="width:130px">Line total</th><th style="width:50px"></th></tr></thead>
+            <thead><tr><th>Product</th><th class="text-end" style="width:100px">Available</th><th style="width:120px">Quantity</th><th style="width:140px">Unit price</th><th style="width:190px">Discount</th><th class="text-end" style="width:120px">Line total</th><th style="width:50px"></th></tr></thead>
             <tbody></tbody>
         </table>
         <button type="button" class="btn btn-outline-primary btn-sm" id="add-row"><i class="bi bi-plus-lg"></i> Add product</button>
 
         <div class="row justify-content-end mt-3"><div class="col-md-4">
             <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><strong id="subtotal">0.00</strong></div>
-            <div class="row g-2 mb-2 align-items-center"><div class="col-6">Discount</div><div class="col-6"><input type="number" min="0" step="0.01" name="discount" id="discount" class="form-control form-control-sm" value="{{ old('discount', 0) }}"></div></div>
+            <div class="d-flex justify-content-between mb-2"><span>Item discounts</span><strong id="itemdisc" class="text-danger">0.00</strong></div>
+            <div class="row g-2 mb-2 align-items-center"><div class="col-5">Order discount</div><div class="col-7"><span class="input-group input-group-sm"><input type="number" min="0" step="0.01" name="discount" id="discount" class="form-control" value="{{ old('discount', 0) }}"><select name="discount_type" id="dtype" class="form-select" style="max-width:62px"><option value="amount">Rs</option><option value="percent" @selected(old('discount_type') === 'percent')>%</option></select></span></div></div>
             <div class="row g-2 mb-2 align-items-center"><div class="col-6">Delivery fee</div><div class="col-6"><input type="number" min="0" step="0.01" name="delivery_fee" id="fee" class="form-control form-control-sm" value="{{ old('delivery_fee', 0) }}"></div></div>
             <div class="d-flex justify-content-between border-top pt-2 fs-5"><span>Total</span><strong id="total">0.00</strong></div>
         </div></div>
@@ -50,6 +51,7 @@
         <td class="text-end avail">—</td>
         <td><input type="number" min="1" class="form-control qty" required></td>
         <td><input type="number" min="0" step="0.01" class="form-control price" required></td>
+        <td><span class="input-group"><input type="number" min="0" step="0.01" class="form-control disc" placeholder="0"><select class="form-select dtype" style="max-width:66px"><option value="amount">Rs</option><option value="percent">%</option></select></span></td>
         <td class="text-end line">0.00</td>
         <td><button type="button" class="btn btn-sm btn-outline-danger rm">&times;</button></td>
     </tr>
@@ -68,21 +70,27 @@
 
     const avail = pid => (stock[branch.value] || {})[pid] ?? 0;
 
+    // Discount typed as a fixed amount or a %, resolved to money and capped at the base.
+    const disc = (value, type, base) => Math.min(type === 'percent' ? base * Math.min(Math.max(num(value), 0), 100) / 100 : Math.max(num(value), 0), base);
+
     function recalc() {
-        let sub = 0;
+        let sub = 0, itemDisc = 0;
         body.querySelectorAll('tr').forEach(tr => {
-            const line = num(tr.querySelector('.qty').value) * num(tr.querySelector('.price').value);
-            tr.querySelector('.line').textContent = fmt(line);
-            sub += line;
+            const gross = num(tr.querySelector('.qty').value) * num(tr.querySelector('.price').value);
+            const d = disc(tr.querySelector('.disc').value, tr.querySelector('.dtype').value, gross);
+            tr.querySelector('.line').textContent = fmt(gross - d);
+            sub += gross; itemDisc += d;
             const sel = tr.querySelector('.prod');
             const a = sel.value ? avail(sel.value) : null;
             const cell = tr.querySelector('.avail');
             cell.textContent = a === null ? '—' : a;
             cell.classList.toggle('text-danger', a !== null && num(tr.querySelector('.qty').value) > a);
         });
-        const disc = Math.min(num(document.getElementById('discount').value), sub);
+        const net = sub - itemDisc;
+        const extra = disc(document.getElementById('discount').value, document.getElementById('dtype').value, net);
         document.getElementById('subtotal').textContent = fmt(sub);
-        document.getElementById('total').textContent = fmt(sub - disc + num(document.getElementById('fee').value));
+        document.getElementById('itemdisc').textContent = '-' + fmt(itemDisc);
+        document.getElementById('total').textContent = fmt(net - extra + num(document.getElementById('fee').value));
     }
 
     function addRow() {
@@ -90,6 +98,7 @@
         const n = i++;
         const sel = tr.querySelector('.prod'), qty = tr.querySelector('.qty'), price = tr.querySelector('.price');
         sel.name = `items[${n}][product_id]`; qty.name = `items[${n}][quantity]`; price.name = `items[${n}][unit_price]`;
+        tr.querySelector('.disc').name = `items[${n}][discount]`; tr.querySelector('.dtype').name = `items[${n}][discount_type]`;
         sel.addEventListener('change', () => { if (sel.value) { price.value = sel.selectedOptions[0].dataset.price; if (!qty.value) qty.value = 1; } recalc(); });
         tr.querySelector('.rm').addEventListener('click', () => { if (body.children.length > 1) { tr.remove(); recalc(); } });
         body.appendChild(tr);

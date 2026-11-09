@@ -22,13 +22,14 @@
                 </div>
 
                 <table class="table table-sm align-middle mb-2">
-                    <thead><tr><th>Item</th><th style="width:78px">Qty</th><th style="width:90px">Disc.</th><th class="text-end">Total</th><th></th></tr></thead>
+                    <thead><tr><th>Item</th><th style="width:78px">Qty</th><th style="width:150px">Disc.</th><th class="text-end">Total</th><th></th></tr></thead>
                     <tbody id="cart"></tbody>
                 </table>
 
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="subtotal">0.00</strong></div>
                 <div class="d-flex justify-content-between"><span>Item discounts</span><strong id="itemdisc" class="text-danger">0.00</strong></div>
-                <div class="d-flex justify-content-between align-items-center my-1"><span>Extra discount (whole bill)</span><input id="discount" type="number" min="0" step="0.01" value="0" class="form-control form-control-sm text-end" style="width:110px"></div>
+                <div class="d-flex justify-content-between align-items-center my-1"><span>Extra discount (whole bill)</span>
+                    <span class="input-group input-group-sm" style="width:170px"><input id="discount" type="number" min="0" step="0.01" value="0" class="form-control text-end"><select id="dtype" class="form-select" style="max-width:62px"><option value="amount">{{ $branchInfo['currency'] ?: 'Rs.' }}</option><option value="percent">%</option></select></span></div>
                 <div class="d-flex justify-content-between fs-4 fw-bold border-top pt-2"><span>Total</span><span id="total">0.00</span></div>
 
                 <div class="mt-2 border-top pt-2">
@@ -82,7 +83,7 @@ const CUR = BRANCH.currency || 'Rs.';
 const num = (n) => Number(n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
-const cart = {};                         // id -> {qty, disc}
+const cart = {};                         // id -> {qty, disc, dtype: 'amount'|'percent'}
 let pays = [{method: 'cash', amount: ''}]; // payment lines
 let busy = false;
 
@@ -100,21 +101,27 @@ function renderGrid() {
 
 function add(id) {
     const p = byId[id]; if (!p) return;
-    const line = cart[id] || (cart[id] = {qty: 0, disc: 0});
+    const line = cart[id] || (cart[id] = {qty: 0, disc: 0, dtype: 'amount'});
     if (line.qty + 1 > p.stock) { $('err').textContent = `Only ${p.stock} of "${p.name}" in stock.`; if (!line.qty) delete cart[id]; return; }
     $('err').textContent = ''; line.qty++; renderCart();
 }
 
 /* ---------- cart ---------- */
 const lineGross = (id) => byId[id].price * cart[id].qty;
-const lineDisc = (id) => Math.min(Math.max(+cart[id].disc || 0, 0), lineGross(id));
+// A discount is typed as a fixed amount or a percentage; both resolve to a money value capped at the base.
+const discValue = (value, type, base) => {
+    value = Math.max(+value || 0, 0);
+    return Math.round(Math.min(type === 'percent' ? base * Math.min(value, 100) / 100 : value, base) * 100) / 100;
+};
+const lineDisc = (id) => discValue(cart[id].disc, cart[id].dtype, lineGross(id));
 
 function renderCart() {
     const ids = Object.keys(cart);
     $('cart').innerHTML = ids.map(id => { const p = byId[id];
         return `<tr><td class="small">${esc(p.name)}<div class="text-muted">${num(p.price)}</div></td>
         <td><input type="number" min="1" max="${p.stock}" value="${cart[id].qty}" data-qty="${id}" class="form-control form-control-sm px-1"></td>
-        <td><input type="number" min="0" step="0.01" value="${cart[id].disc || ''}" placeholder="0" data-disc="${id}" class="form-control form-control-sm px-1 text-end"></td>
+        <td><span class="input-group input-group-sm"><input type="number" min="0" step="0.01" value="${cart[id].disc || ''}" placeholder="0" data-disc="${id}" class="form-control px-1 text-end">
+            <select data-dtype="${id}" class="form-select px-1" style="max-width:52px"><option value="amount" ${cart[id].dtype === 'amount' ? 'selected' : ''}>Rs</option><option value="percent" ${cart[id].dtype === 'percent' ? 'selected' : ''}>%</option></select></span></td>
         <td class="text-end">${num(lineGross(id) - lineDisc(id))}</td>
         <td><button type="button" class="btn btn-sm text-danger" data-rm="${id}">&times;</button></td></tr>`; }).join('')
         || '<tr><td colspan="5" class="text-center text-muted py-3">Cart is empty</td></tr>';
@@ -126,7 +133,7 @@ function calc() {
     const gross = ids.reduce((s, id) => s + lineGross(id), 0);
     const itemDisc = ids.reduce((s, id) => s + lineDisc(id), 0);
     const net = gross - itemDisc;
-    const extra = Math.min(Math.max(parseFloat($('discount').value) || 0, 0), net);
+    const extra = discValue($('discount').value, $('dtype').value, net);
     return {gross, itemDisc, extra, total: Math.round((net - extra) * 100) / 100};
 }
 
@@ -182,7 +189,8 @@ function previewHtml() {
 $('grid').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) add(+b.dataset.id); });
 $('cart').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { delete cart[b.dataset.rm]; renderCart(); } });
 $('cart').addEventListener('change', e => {
-    const q = e.target.dataset.qty, d = e.target.dataset.disc;
+    const q = e.target.dataset.qty, d = e.target.dataset.disc, t = e.target.dataset.dtype;
+    if (t) cart[t].dtype = e.target.value === 'percent' ? 'percent' : 'amount';
     if (q) cart[q].qty = Math.max(1, Math.min(parseInt(e.target.value) || 1, byId[q].stock));
     if (d) cart[d].disc = Math.max(parseFloat(e.target.value) || 0, 0);
     renderCart();
@@ -196,6 +204,7 @@ $('search').addEventListener('keydown', e => { // Enter on an exact SKU / single
     if (hit) { add(hit.id); e.target.value = ''; renderGrid(); }
 });
 $('discount').addEventListener('input', totals);
+$('dtype').addEventListener('change', totals);
 
 $('pays').addEventListener('input', e => { const i = e.target.dataset.pa; if (i !== undefined) { pays[i].amount = e.target.value; totals(); } });
 $('pays').addEventListener('change', e => { const i = e.target.dataset.pm; if (i !== undefined) pays[i].method = e.target.value; });
@@ -218,8 +227,8 @@ async function complete() {
     const res = await fetch("{{ route('pos.store') }}", {
         method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
         body: JSON.stringify({
-            customer_id: $('customer').value || null, discount: calc().extra,
-            items: Object.keys(cart).map(id => ({product_id: +id, quantity: cart[id].qty, discount: lineDisc(id)})),
+            customer_id: $('customer').value || null, discount: parseFloat($('discount').value) || 0, discount_type: $('dtype').value,
+            items: Object.keys(cart).map(id => ({product_id: +id, quantity: cart[id].qty, discount: cart[id].disc || 0, discount_type: cart[id].dtype})),
             payments: pays.filter(p => parseFloat(p.amount) > 0).map(p => ({method: p.method, amount: parseFloat(p.amount)})),
         }),
     });

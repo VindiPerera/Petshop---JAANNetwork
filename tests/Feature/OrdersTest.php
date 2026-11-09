@@ -94,4 +94,59 @@ class OrdersTest extends TestCase
         $this->actingAs($user)->post("/orders/{$order->id}/status", ['status' => 'cancelled'])->assertRedirect();
         $this->assertSame('cancelled', $order->fresh()->status);
     }
+
+    public function test_percent_and_amount_discounts_per_product_and_per_order(): void
+    {
+        extract($this->world());
+        $p2 = Product::create(['sku' => 'P2', 'name' => 'Toy', 'cost_price' => 50, 'sale_price' => 80]);
+        Stock::create(['branch_id' => $shop->id, 'product_id' => $p2->id, 'quantity' => 10]);
+
+        // Food 2 x 150 = 300, 10% off -> 270. Toy 1 x 80, Rs 30 off -> 50. Net 320, order discount 25% -> 80 => 240, +50 delivery = 290
+        $this->actingAs($user)->post('/orders', [
+            'customer_name' => 'Nimal', 'source' => 'phone', 'delivery_fee' => 50, 'discount' => 25, 'discount_type' => 'percent',
+            'items' => [
+                ['product_id' => $p->id, 'quantity' => 2, 'unit_price' => 150, 'discount' => 10, 'discount_type' => 'percent'],
+                ['product_id' => $p2->id, 'quantity' => 1, 'unit_price' => 80, 'discount' => 30, 'discount_type' => 'amount'],
+            ],
+        ])->assertRedirect();
+        $order = Order::firstOrFail();
+        $this->assertEquals(380.0, (float) $order->subtotal);
+        $this->assertEquals(80.0, (float) $order->discount);
+        $this->assertEquals(290.0, (float) $order->total);
+
+        $this->actingAs($user)->post("/orders/{$order->id}/bill", ['payments' => [['method' => 'card', 'amount' => 290]]])->assertRedirect();
+        $sale = Sale::firstOrFail();
+        $this->assertEquals(290.0, (float) $sale->total);
+        $this->assertEquals(380.0 - 320.0 + 80.0, (float) $sale->discount); // item discounts 60 + order discount 80
+        // gross - all discounts = revenue of the lines (delivery fee is not product revenue)
+        $this->assertEquals(240.0, (float) $sale->items()->sum('line_total'));
+        $this->assertEquals(380.0, (float) $sale->items->sum(fn ($i) => $i->quantity * $i->unit_price));
+    }
+
+    public function test_discounts_never_exceed_the_amount_they_apply_to(): void
+    {
+        extract($this->world());
+        $this->actingAs($user)->post('/orders', [
+            'customer_name' => 'X', 'source' => 'phone', 'discount' => 500, 'discount_type' => 'amount',
+            'items' => [['product_id' => $p->id, 'quantity' => 1, 'unit_price' => 150, 'discount' => 300, 'discount_type' => 'percent']],
+        ])->assertRedirect();
+        $order = Order::firstOrFail();
+        $this->assertEquals(0.0, (float) $order->total);
+        $this->assertEquals(150.0, (float) $order->items->first()->discount);
+    }
+
+    public function test_pos_accepts_percent_discounts(): void
+    {
+        extract($this->world());
+        // 2 x 150 = 300; line 10% -> 270; bill 10% of 270 -> 27; total 243
+        $this->actingAs($user)->postJson('/pos', [
+            'discount' => 10, 'discount_type' => 'percent',
+            'items' => [['product_id' => $p->id, 'quantity' => 2, 'discount' => 10, 'discount_type' => 'percent']],
+            'payments' => [['method' => 'cash', 'amount' => 243]],
+        ])->assertOk();
+        $sale = Sale::firstOrFail();
+        $this->assertEquals(243.0, (float) $sale->total);
+        $this->assertEquals(57.0, (float) $sale->discount);
+        $this->assertEquals(243.0, (float) $sale->items()->sum('line_total'));
+    }
 }

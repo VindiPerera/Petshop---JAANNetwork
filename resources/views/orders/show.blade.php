@@ -12,18 +12,19 @@
                 <span class="badge text-bg-{{ \App\Models\Order::STATUS_COLORS[$order->status] ?? 'secondary' }}">{{ \App\Models\Order::STATUSES[$order->status] ?? $order->status }}</span>
             </div>
             <table class="table mb-0">
-                <thead><tr><th>Product</th><th class="text-end">In stock</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Total</th></tr></thead>
+                <thead><tr><th>Product</th><th class="text-end">In stock</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Discount</th><th class="text-end">Total</th></tr></thead>
                 @foreach($order->items as $i)
                     @php $have = (int) ($stock[$i->product_id] ?? 0); @endphp
                     <tr><td>{{ $i->product->sku }} — {{ $i->product->name }}</td>
                         <td class="text-end {{ $order->isOpen() && $have < $i->quantity ? 'text-danger fw-semibold' : '' }}">{{ $have }}</td>
-                        <td class="text-end">{{ $i->quantity }}</td><td class="text-end">{{ number_format($i->unit_price, 2) }}</td><td class="text-end">{{ number_format($i->line_total, 2) }}</td></tr>
+                        <td class="text-end">{{ $i->quantity }}</td><td class="text-end">{{ number_format($i->unit_price, 2) }}</td><td class="text-end">{{ $i->discount > 0 ? '-'.number_format($i->discount, 2) : '—' }}</td><td class="text-end">{{ number_format($i->line_total, 2) }}</td></tr>
                 @endforeach
                 <tfoot>
-                    <tr><td colspan="4" class="text-end">Subtotal</td><td class="text-end">{{ number_format($order->subtotal, 2) }}</td></tr>
-                    @if($order->discount > 0)<tr><td colspan="4" class="text-end">Discount</td><td class="text-end">-{{ number_format($order->discount, 2) }}</td></tr>@endif
-                    @if($order->delivery_fee > 0)<tr><td colspan="4" class="text-end">Delivery fee</td><td class="text-end">{{ number_format($order->delivery_fee, 2) }}</td></tr>@endif
-                    <tr class="fw-bold"><td colspan="4" class="text-end">Total</td><td class="text-end">{{ number_format($order->total, 2) }}</td></tr>
+                    <tr><td colspan="5" class="text-end">Subtotal</td><td class="text-end">{{ number_format($order->subtotal, 2) }}</td></tr>
+                    @if($order->items->sum('discount') > 0)<tr><td colspan="5" class="text-end">Item discounts</td><td class="text-end">-{{ number_format($order->items->sum('discount'), 2) }}</td></tr>@endif
+                    @if($order->discount > 0)<tr><td colspan="5" class="text-end">Order discount</td><td class="text-end">-{{ number_format($order->discount, 2) }}</td></tr>@endif
+                    @if($order->delivery_fee > 0)<tr><td colspan="5" class="text-end">Delivery fee</td><td class="text-end">{{ number_format($order->delivery_fee, 2) }}</td></tr>@endif
+                    <tr class="fw-bold"><td colspan="5" class="text-end">Total</td><td class="text-end">{{ number_format($order->total, 2) }}</td></tr>
                 </tfoot>
             </table>
         </div>

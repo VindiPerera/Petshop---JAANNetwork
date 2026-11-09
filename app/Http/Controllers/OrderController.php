@@ -64,31 +64,40 @@ class OrderController extends Controller
             'delivery_address' => 'nullable|string|max:255',
             'source' => ['required', Rule::in(array_keys(Order::SOURCES))],
             'discount' => 'nullable|numeric|min:0',
+            'discount_type' => 'nullable|in:amount,percent',
             'delivery_fee' => 'nullable|numeric|min:0',
             'note' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id|distinct',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.discount_type' => 'nullable|in:amount,percent',
         ]);
         $branchId = $user->isAdmin() ? (int) $data['branch_id'] : $user->branch_id;
 
         $order = DB::transaction(function () use ($data, $user, $branchId) {
-            $lines = collect($data['items'])->map(fn ($i) => $i + ['line_total' => round($i['quantity'] * $i['unit_price'], 2)]);
-            $subtotal = round($lines->sum('line_total'), 2);
-            $discount = min(round((float) ($data['discount'] ?? 0), 2), $subtotal);
+            // Product-wise discount first (amount or %), then an optional whole-order discount on what is left.
+            $lines = collect($data['items'])->map(function ($i) {
+                $gross = round($i['quantity'] * $i['unit_price'], 2);
+                $disc = $this->discountAmount($i['discount'] ?? 0, $i['discount_type'] ?? 'amount', $gross);
+                return $i + ['gross' => $gross, 'line_discount' => $disc, 'line_total' => round($gross - $disc, 2)];
+            });
+            $subtotal = round($lines->sum('gross'), 2);
+            $lineNet = round($lines->sum('line_total'), 2);
+            $discount = $this->discountAmount($data['discount'] ?? 0, $data['discount_type'] ?? 'amount', $lineNet);
             $fee = round((float) ($data['delivery_fee'] ?? 0), 2);
 
             $order = Order::create([
                 'order_no' => (string) Str::uuid(), 'branch_id' => $branchId, 'customer_id' => $data['customer_id'] ?? null, 'user_id' => $user->id,
                 'customer_name' => $data['customer_name'], 'customer_phone' => $data['customer_phone'] ?? null,
                 'delivery_address' => $data['delivery_address'] ?? null, 'source' => $data['source'], 'status' => 'pending',
-                'subtotal' => $subtotal, 'discount' => $discount, 'delivery_fee' => $fee, 'total' => round($subtotal - $discount + $fee, 2),
+                'subtotal' => $subtotal, 'discount' => $discount, 'delivery_fee' => $fee, 'total' => round($lineNet - $discount + $fee, 2),
                 'note' => $data['note'] ?? null,
             ]);
             $order->update(['order_no' => 'ORD-'.str_pad($order->id, 6, '0', STR_PAD_LEFT)]);
             $order->items()->createMany($lines->map(fn ($l) => [
-                'product_id' => $l['product_id'], 'quantity' => $l['quantity'], 'unit_price' => $l['unit_price'], 'line_total' => $l['line_total'],
+                'product_id' => $l['product_id'], 'quantity' => $l['quantity'], 'unit_price' => $l['unit_price'], 'discount' => $l['line_discount'], 'line_total' => $l['line_total'],
             ])->all());
             return $order;
         });
@@ -150,7 +159,7 @@ class OrderController extends Controller
             $methods = $payments->pluck('method')->unique();
             $sale = Sale::create([
                 'invoice_no' => (string) Str::uuid(), 'branch_id' => $order->branch_id, 'customer_id' => $order->customer_id, 'user_id' => $user->id,
-                'subtotal' => $order->subtotal, 'discount' => $order->discount, 'delivery_fee' => $order->delivery_fee, 'total' => $total,
+                'subtotal' => $order->subtotal, 'discount' => round($order->items->sum('discount') + $order->discount, 2), 'delivery_fee' => $order->delivery_fee, 'total' => $total,
                 'paid' => $tendered, 'payment_method' => $methods->count() > 1 ? 'split' : $methods->first(),
                 'channel' => 'online', 'order_id' => $order->id,
             ]);
@@ -170,15 +179,17 @@ class OrderController extends Controller
                 }
             }
 
-            // The order-wide discount is spread proportionally (last line takes the rounding remainder) so profit stays accurate.
+            // The order-wide discount is spread over the lines by their net value (last line takes the rounding remainder)
+            // and added to each line's own discount, so profit stays accurate.
+            $lineNet = (float) $order->items->sum('line_total');
             $left = (float) $order->discount;
             $last = $order->items->count() - 1;
             foreach ($order->items as $idx => $item) {
-                $share = $idx === $last ? $left : ($order->subtotal > 0 ? round($order->discount * $item->line_total / $order->subtotal, 2) : 0);
+                $share = $idx === $last ? $left : ($lineNet > 0 ? round($order->discount * $item->line_total / $lineNet, 2) : 0);
                 $left = round($left - $share, 2);
                 $sale->items()->create([
                     'product_id' => $item->product_id, 'quantity' => $item->quantity, 'unit_price' => $item->unit_price,
-                    'unit_cost' => $item->product->cost_price, 'discount' => $share, 'line_total' => round($item->line_total - $share, 2),
+                    'unit_cost' => $item->product->cost_price, 'discount' => round($item->discount + $share, 2), 'line_total' => round($item->line_total - $share, 2),
                 ]);
                 StockService::change($order->branch_id, $item->product_id, -$item->quantity, 'sale', $sale->invoice_no, $user->id);
             }

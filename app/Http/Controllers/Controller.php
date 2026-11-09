@@ -23,6 +23,17 @@ abstract class Controller
         return in_array($request->input('export'), ['pdf', 'xlsx'], true) ? $request->input('export') : null;
     }
 
+    /**
+     * Money value of a discount typed as a fixed amount or a percentage of $base.
+     * Never more than $base, never negative; percentages are capped at 100.
+     */
+    protected function discountAmount(float|int|string|null $value, ?string $type, float $base): float
+    {
+        $value = max((float) $value, 0);
+        $amount = $type === 'percent' ? $base * min($value, 100) / 100 : $value;
+        return round(min($amount, $base), 2);
+    }
+
     protected function branchOptions()
     {
         return Branch::orderBy('type')->orderBy('name')->get();

@@ -41,10 +41,12 @@ class PosController extends Controller
         $data = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'discount' => 'nullable|numeric|min:0',
+            'discount_type' => 'nullable|in:amount,percent',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id|distinct',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.discount_type' => 'nullable|in:amount,percent',
             'payments' => 'required|array|min:1',
             'payments.*.method' => 'required|in:cash,card,transfer',
             'payments.*.amount' => 'required|numeric|min:0.01',
@@ -57,12 +59,12 @@ class PosController extends Controller
             // Per-line totals, each line discount capped at the line value.
             $lines = collect($data['items'])->map(function ($i) use ($products) {
                 $gross = $i['quantity'] * $products[$i['product_id']]->sale_price;
-                $disc = min((float) ($i['discount'] ?? 0), $gross);
+                $disc = $this->discountAmount($i['discount'] ?? 0, $i['discount_type'] ?? 'amount', $gross);
                 return $i + ['gross' => $gross, 'line_discount' => $disc, 'net' => $gross - $disc];
             });
 
             $lineNet = round($lines->sum('net'), 2);
-            $extraDiscount = min((float) ($data['discount'] ?? 0), $lineNet);
+            $extraDiscount = $this->discountAmount($data['discount'] ?? 0, $data['discount_type'] ?? 'amount', $lineNet);
             $total = round($lineNet - $extraDiscount, 2);
             $totalDiscount = round($lines->sum('line_discount') + $extraDiscount, 2);
 
