@@ -51,7 +51,8 @@
         <span>Invoice</span><span>{{ $sale->invoice_no }}</span>
         <span>Date</span><span>{{ $sale->created_at->format('d M Y, H:i') }}</span>
         <span>Cashier</span><span>{{ $sale->user->name }}</span>
-        <span>Customer</span><span>{{ $sale->customer?->name ?? 'Walk-in' }}</span>
+        <span>Customer</span><span>{{ $sale->customer?->name ?? $sale->order?->customer_name ?? 'Walk-in' }}</span>
+        @if($sale->order)<span>Order</span><span>{{ $sale->order->order_no }}</span>@endif
     </div>
     <hr style="margin-bottom:4px">
     <table>
@@ -64,6 +65,7 @@
     <hr>
     <div class="row2"><span>Subtotal</span><span>{{ $m($sale->subtotal) }}</span></div>
     @if($sale->discount > 0)<div class="row2"><span>Total discount</span><span>-{{ $m($sale->discount) }}</span></div>@endif
+    @if($sale->delivery_fee > 0)<div class="row2"><span>Delivery fee</span><span>{{ $m($sale->delivery_fee) }}</span></div>@endif
     <div class="total"><span>TOTAL</span><span>{{ $m($sale->total) }}</span></div>
     @foreach($sale->payments as $p)
         <div class="row2"><span>Paid ({{ ucfirst($p->method) }})</span><span>{{ $m($p->amount) }}</span></div>

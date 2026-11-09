@@ -23,6 +23,13 @@ class ReportController extends Controller
         $daily = $base()->selectRaw('DATE(sales.created_at) as day, COUNT(*) as bills, SUM(total) as revenue')->groupBy('day')->orderBy('day')->get();
         $byBranch = $base()->join('branches', 'branches.id', '=', 'sales.branch_id')
             ->selectRaw('branches.name, COUNT(*) as bills, SUM(sales.total) as revenue')->groupBy('branches.id', 'branches.name')->orderByDesc('revenue')->get();
+        $byChannel = $base()->selectRaw('sales.channel, COUNT(*) as bills, SUM(sales.total) as revenue, SUM(sales.delivery_fee) as delivery')
+            ->groupBy('sales.channel')->orderBy('sales.channel')->get();
+        // Online orders placed in the period, by status (billed ones are also in the sales figures above).
+        $ordersByStatus = DB::table('orders')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)
+            ->selectRaw('status, COUNT(*) as orders, SUM(total) as value')->groupBy('status')->get();
         $byPayment = DB::table('sale_payments')->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
             ->when($branchId, fn ($q) => $q->where('sales.branch_id', $branchId))
             ->whereDate('sales.created_at', '>=', $from)->whereDate('sales.created_at', '<=', $to)
@@ -38,7 +45,7 @@ class ReportController extends Controller
         if ($fmt = $this->exportFormat($request)) {
             $invoices = $base()->join('branches', 'branches.id', '=', 'sales.branch_id')
                 ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
-                ->selectRaw('sales.invoice_no, sales.created_at, branches.name as branch, customers.name as customer, sales.payment_method, sales.discount, sales.total')
+                ->selectRaw('sales.invoice_no, sales.channel, sales.created_at, branches.name as branch, customers.name as customer, sales.payment_method, sales.discount, sales.total')
                 ->orderBy('sales.created_at')->limit(5000)->get();
 
             $sections = [
@@ -46,6 +53,10 @@ class ReportController extends Controller
                  'rows' => [[(float) $summary->revenue, (int) $summary->bills, (float) $summary->discounts]]],
                 ['heading' => 'Sales by branch', 'columns' => ['Branch', 'Bills', 'Revenue'], 'align' => ['left', 'right', 'right'],
                  'rows' => $byBranch->map(fn ($r) => [$r->name, (int) $r->bills, (float) $r->revenue])->all()],
+                ['heading' => 'Sales by channel', 'columns' => ['Channel', 'Bills', 'Revenue'], 'align' => ['left', 'right', 'right'],
+                 'rows' => $byChannel->map(fn ($r) => [$r->channel === 'online' ? 'Online orders' : 'POS (in shop)', (int) $r->bills, (float) $r->revenue])->all()],
+                ['heading' => 'Online orders by status', 'columns' => ['Status', 'Orders', 'Value'], 'align' => ['left', 'right', 'right'],
+                 'rows' => $ordersByStatus->map(fn ($r) => [ucfirst($r->status), (int) $r->orders, (float) $r->value])->all()],
                 ['heading' => 'Sales by payment method', 'columns' => ['Method', 'Bills', 'Amount'], 'align' => ['left', 'right', 'right'],
                  'rows' => $byPayment->map(fn ($r) => [ucfirst($r->payment_method), (int) $r->bills, (float) $r->revenue])->all()],
                 ['heading' => 'Top products', 'columns' => ['SKU', 'Product', 'Qty', 'Revenue'], 'align' => ['left', 'left', 'right', 'right'],
@@ -53,9 +64,9 @@ class ReportController extends Controller
                 ['heading' => 'Daily sales', 'columns' => ['Date', 'Bills', 'Revenue'], 'align' => ['left', 'right', 'right'],
                  'rows' => $daily->map(fn ($r) => [$r->day, (int) $r->bills, (float) $r->revenue])->all(),
                  'totals' => ['Total', (int) $summary->bills, (float) $summary->revenue]],
-                ['heading' => 'All invoices', 'columns' => ['Invoice', 'Date', 'Branch', 'Customer', 'Payment', 'Discount', 'Total'],
-                 'align' => ['left', 'left', 'left', 'left', 'left', 'right', 'right'],
-                 'rows' => $invoices->map(fn ($r) => [$r->invoice_no, substr($r->created_at, 0, 16), $r->branch, $r->customer ?? 'Walk-in', ucfirst($r->payment_method), (float) $r->discount, (float) $r->total])->all()],
+                ['heading' => 'All invoices', 'columns' => ['Invoice', 'Channel', 'Date', 'Branch', 'Customer', 'Payment', 'Discount', 'Total'],
+                 'align' => ['left', 'left', 'left', 'left', 'left', 'left', 'right', 'right'],
+                 'rows' => $invoices->map(fn ($r) => [$r->invoice_no, $r->channel === 'online' ? 'Online' : 'POS', substr($r->created_at, 0, 16), $r->branch, $r->customer ?? 'Walk-in', ucfirst($r->payment_method), (float) $r->discount, (float) $r->total])->all()],
             ];
             return Exporter::download($fmt, 'Sales Report', $this->subtitle($branchId, $from, $to), $sections, "sales-report-$from-to-$to");
         }
@@ -63,6 +74,7 @@ class ReportController extends Controller
         return view('reports.sales', [
             'from' => $from, 'to' => $to, 'branches' => $this->branchOptions(),
             'summary' => $summary, 'daily' => $daily, 'byBranch' => $byBranch, 'byPayment' => $byPayment, 'topProducts' => $topProducts,
+            'byChannel' => $byChannel, 'ordersByStatus' => $ordersByStatus,
         ]);
     }
 

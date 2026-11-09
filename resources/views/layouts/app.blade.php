@@ -125,6 +125,7 @@
         @endif
 
         <div class="section">Operations</div>
+        <a class="nav-i {{ $nav('orders.*') }}" href="{{ route('orders.index') }}"><i class="bi bi-bag-check"></i>Online Orders</a>
         <a class="nav-i {{ $nav('sales.*') }}" href="{{ route('sales.index') }}"><i class="bi bi-receipt"></i>Sales</a>
         <a class="nav-i {{ $nav('customers.*') }}" href="{{ route('customers.index') }}"><i class="bi bi-person-heart"></i>Customers</a>
         @unless($u->isAdmin())<a class="nav-i {{ $nav('settings') }}" href="{{ route('settings') }}"><i class="bi bi-gear"></i>Shop Settings</a>@endunless

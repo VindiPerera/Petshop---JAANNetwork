@@ -17,6 +17,16 @@
         @empty<tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>@endforelse
     </table></div></div>
     @endif
+    <div class="col-lg-6"><div class="card shadow-sm"><div class="card-header bg-white fw-semibold">By channel</div><table class="table table-sm mb-0">
+        <thead><tr><th>Channel</th><th class="text-end">Bills</th><th class="text-end">Revenue</th></tr></thead>
+        @forelse($byChannel as $r)<tr><td>{{ $r->channel === 'online' ? 'Online orders' : 'POS (in shop)' }}</td><td class="text-end">{{ $r->bills }}</td><td class="text-end">{{ number_format($r->revenue, 2) }}</td></tr>
+        @empty<tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>@endforelse
+    </table></div></div>
+    <div class="col-lg-6"><div class="card shadow-sm"><div class="card-header bg-white fw-semibold">Online orders by status</div><table class="table table-sm mb-0">
+        <thead><tr><th>Status</th><th class="text-end">Orders</th><th class="text-end">Value</th></tr></thead>
+        @forelse($ordersByStatus as $r)<tr><td class="text-capitalize">{{ $r->status }}</td><td class="text-end">{{ $r->orders }}</td><td class="text-end">{{ number_format($r->value, 2) }}</td></tr>
+        @empty<tr><td colspan="3" class="text-center text-muted py-3">No orders</td></tr>@endforelse
+    </table></div></div>
     <div class="col-lg-6"><div class="card shadow-sm"><div class="card-header bg-white fw-semibold">By payment method</div><table class="table table-sm mb-0">
         <thead><tr><th>Method</th><th class="text-end">Bills</th><th class="text-end">Revenue</th></tr></thead>
         @forelse($byPayment as $r)<tr><td class="text-capitalize">{{ $r->payment_method }}</td><td class="text-end">{{ $r->bills }}</td><td class="text-end">{{ number_format($r->revenue, 2) }}</td></tr>

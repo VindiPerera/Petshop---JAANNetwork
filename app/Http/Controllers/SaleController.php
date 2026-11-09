@@ -12,6 +12,7 @@ class SaleController extends Controller
         $branchId = $this->scopeBranchId($request);
         $sales = Sale::with('branch', 'customer', 'user')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(in_array($request->channel, ['pos', 'online'], true), fn ($q) => $q->where('channel', $request->channel))
             ->when($request->from, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
             ->when($request->to, fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
             ->when($request->q, fn ($q, $s) => $q->where('invoice_no', 'like', "%$s%"))
@@ -22,7 +23,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         abort_unless($request->user()->isAdmin() || $sale->branch_id === $request->user()->branch_id, 403);
-        $sale->load('branch', 'customer', 'user', 'items.product', 'payments');
+        $sale->load('branch', 'customer', 'user', 'items.product', 'payments', 'order');
         return view('sales.show', compact('sale'));
     }
 }
