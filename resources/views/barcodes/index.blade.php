@@ -9,6 +9,7 @@
         <div class="col-md-3"><label class="form-label">Label size</label>
             <select name="size" class="form-select">
                 <option value="small">Small (38 × 25 mm)</option>
+                <option value="wide">2 inch (50 × 25 mm)</option>
                 <option value="medium" selected>Medium (50 × 30 mm)</option>
                 <option value="large">Large (70 × 40 mm)</option>
             </select></div>

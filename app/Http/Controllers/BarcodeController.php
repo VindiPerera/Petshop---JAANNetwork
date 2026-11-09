@@ -31,7 +31,7 @@ class BarcodeController extends Controller
         $data = $request->validate([
             'copies' => 'required|array',
             'copies.*' => 'nullable|integer|min:0|max:500',
-            'size' => 'required|in:small,medium,large',
+            'size' => 'required|in:small,wide,medium,large',
             'show_price' => 'nullable|boolean',
             'show_name' => 'nullable|boolean',
         ]);

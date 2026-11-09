@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>Barcode labels</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    @php [$w, $h] = ['small' => [38, 25], 'medium' => [50, 30], 'large' => [70, 40]][$size]; @endphp
+    @php [$w, $h] = ['small' => [38, 25], 'wide' => [50, 25], 'medium' => [50, 30], 'large' => [70, 40]][$size]; @endphp
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; font-family: 'Inter', Arial, sans-serif; background: #e5e7eb; color: #000; }
@@ -12,10 +12,10 @@
         .bar button { background: #6366f1; border: 0; color: #fff; border-radius: 8px; padding: 7px 16px; font-weight: 600; cursor: pointer; }
         .sheet { display: flex; flex-wrap: wrap; gap: 3mm; padding: 5mm; }
         .label { width: {{ $w }}mm; height: {{ $h }}mm; background: #fff; padding: 1.2mm 1.5mm; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; text-align: center; page-break-inside: avoid; break-inside: avoid; }
-        .label .nm { font-size: {{ $size === 'small' ? 6.5 : ($size === 'medium' ? 7.5 : 9.5) }}pt; font-weight: 600; line-height: 1.1; max-height: 2.3em; overflow: hidden; }
-        .label .pr { font-size: {{ $size === 'small' ? 8 : ($size === 'medium' ? 9.5 : 12) }}pt; font-weight: 700; }
+        .label .nm { font-size: {{ in_array($size, ['small', 'wide']) ? 6.5 : ($size === 'medium' ? 7.5 : 9.5) }}pt; font-weight: 600; line-height: 1.1; max-height: 2.3em; overflow: hidden; }
+        .label .pr { font-size: {{ in_array($size, ['small', 'wide']) ? 8 : ($size === 'medium' ? 9.5 : 12) }}pt; font-weight: 700; }
         .label svg { width: 100%; flex: 1 1 auto; min-height: 0; max-height: {{ $h * 0.5 }}mm; }
-        .label .code { font-size: {{ $size === 'small' ? 5.5 : 6.5 }}pt; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+        .label .code { font-size: {{ in_array($size, ['small', 'wide']) ? 5.5 : 6.5 }}pt; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
         @media print {
             @page { size: {{ $w }}mm {{ $h }}mm; margin: 0; }
             body { background: #fff; }

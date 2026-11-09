@@ -42,6 +42,7 @@ class BarcodeTest extends TestCase
             ->assertOk()->assertSee('<svg', false)->assertSee($p->barcode);
         $html = $this->actingAs($user)->post('/barcodes/print', ['size' => 'medium', 'copies' => [$p->id => 3, $other->id => 2]])->getContent();
         $this->assertSame(3, substr_count($html, 'class="label"'));
+        $this->actingAs($user)->post('/barcodes/print', ['size' => 'wide', 'copies' => [$p->id => 1]])->assertOk()->assertSee('size: 50mm 25mm', false);
         $this->actingAs($user)->get('/pos')->assertSee($p->barcode);
 
         // invoice barcode on the bill
