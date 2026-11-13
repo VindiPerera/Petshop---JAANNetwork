@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Invoice '.$sale->invoice_no)
 @section('actions')
-    @if(auth()->user()->role === 'branch')<a href="{{ route('pos') }}" class="btn btn-warning"><i class="bi bi-plus-lg"></i> New sale</a>@endif
+    <a href="{{ route('pos', auth()->user()->isAdmin() ? ['branch_id' => $sale->branch_id] : []) }}" class="btn btn-warning"><i class="bi bi-plus-lg"></i> New sale</a>
     <button onclick="window.print()" class="btn btn-primary"><i class="bi bi-printer"></i> Print / Reprint</button>
 @endsection
 

@@ -119,10 +119,10 @@
             <a class="nav-i {{ $nav('admin.products.*') }}" href="{{ route('admin.products.index') }}"><i class="bi bi-tags"></i>Products</a>
             <a class="nav-i {{ $nav('admin.categories.*') }}" href="{{ route('admin.categories.index') }}"><i class="bi bi-diagram-3"></i>Categories</a>
             <a class="nav-i {{ $nav('admin.suppliers.*') }}" href="{{ route('admin.suppliers.index') }}"><i class="bi bi-person-lines-fill"></i>Suppliers</a>
-        @else
-            <div class="section">Shop</div>
-            <a class="nav-i {{ $nav('pos') }}" href="{{ route('pos') }}"><i class="bi bi-calculator"></i>POS Billing</a>
         @endif
+
+        <div class="section">{{ $u->isAdmin() ? 'Billing' : 'Shop' }}</div>
+        <a class="nav-i {{ $nav('pos') }}" href="{{ route('pos') }}"><i class="bi bi-calculator"></i>POS Billing</a>
 
         <div class="section">Operations</div>
         <a class="nav-i {{ $nav('orders.*') }}" href="{{ route('orders.index') }}"><i class="bi bi-bag-check"></i>Online Orders</a>

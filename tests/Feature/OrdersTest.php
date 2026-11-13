@@ -149,4 +149,35 @@ class OrdersTest extends TestCase
         $this->assertEquals(57.0, (float) $sale->discount);
         $this->assertEquals(243.0, (float) $sale->items()->sum('line_total'));
     }
+
+    public function test_main_admin_can_bill_at_pos_from_any_location(): void
+    {
+        extract($this->world());
+
+        $this->actingAs($admin)->get('/pos')->assertOk(); // defaults to the first location
+        $this->actingAs($admin)->get('/pos?branch_id='.$shop->id)->assertOk()->assertSee('Food');
+
+        $this->actingAs($admin)->postJson('/pos', [
+            'branch_id' => $shop->id,
+            'items' => [['product_id' => $p->id, 'quantity' => 3]],
+            'payments' => [['method' => 'cash', 'amount' => 450]],
+        ])->assertOk();
+
+        $sale = Sale::firstOrFail();
+        $this->assertSame($shop->id, $sale->branch_id);
+        $this->assertSame('pos', $sale->channel);
+        $this->assertSame(7, (int) Stock::where('branch_id', $shop->id)->value('quantity'));
+
+        // POS and online bills land in the same Sales list and reports
+        $this->actingAs($admin)->get('/sales')->assertOk()->assertSee($sale->invoice_no);
+        $this->actingAs($admin)->get('/sales?channel=online')->assertOk()->assertDontSee($sale->invoice_no);
+        $this->actingAs($admin)->get('/reports/sales?from=2000-01-01&to=2100-01-01')->assertOk()->assertSee('POS (in shop)');
+
+        // A branch user cannot bill from someone else's shop
+        $this->actingAs($stranger)->postJson('/pos', [
+            'branch_id' => $shop->id, 'items' => [['product_id' => $p->id, 'quantity' => 1]],
+            'payments' => [['method' => 'cash', 'amount' => 150]],
+        ])->assertStatus(422); // own shop B has no stock; branch_id in the payload is ignored
+        $this->assertSame(1, Sale::count());
+    }
 }

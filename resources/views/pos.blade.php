@@ -15,6 +15,12 @@
     <div class="col-lg-6 col-xl-5">
         <div class="card">
             <div class="card-body">
+                @if(auth()->user()->isAdmin())
+                    <form method="get" class="mb-2"><label class="form-label mb-1">Selling from</label>
+                        <select name="branch_id" class="form-select" onchange="this.form.submit()">
+                            @foreach($locations as $l)<option value="{{ $l->id }}" @selected($l->id === $branchId)>{{ $l->name }} ({{ $l->type }})</option>@endforeach
+                        </select></form>
+                @endif
                 <div class="d-flex gap-2 mb-2">
                     <select id="customer" class="form-select"><option value="">Walk-in customer</option>
                         @foreach($customers as $c)<option value="{{ $c->id }}">{{ $c->name }} {{ $c->phone }}</option>@endforeach</select>
@@ -227,7 +233,7 @@ async function complete() {
     const res = await fetch("{{ route('pos.store') }}", {
         method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
         body: JSON.stringify({
-            customer_id: $('customer').value || null, discount: parseFloat($('discount').value) || 0, discount_type: $('dtype').value,
+            branch_id: {{ $branchId }}, customer_id: $('customer').value || null, discount: parseFloat($('discount').value) || 0, discount_type: $('dtype').value,
             items: Object.keys(cart).map(id => ({product_id: +id, quantity: cart[id].qty, discount: cart[id].disc || 0, discount_type: cart[id].dtype})),
             payments: pays.filter(p => parseFloat(p.amount) > 0).map(p => ({method: p.method, amount: parseFloat(p.amount)})),
         }),

@@ -3,6 +3,11 @@
 
 @section('content')
 @include('partials.filters', ['dates' => true, 'search' => true])
+<div class="d-flex gap-1 mb-3 no-print">
+    @foreach(['' => 'All sales', 'pos' => 'POS bills', 'online' => 'Online orders'] as $k => $label)
+        <a class="btn btn-sm {{ (string) request('channel') === (string) $k ? 'btn-primary' : 'btn-light border' }}" href="{{ route('sales.index', array_merge(request()->except('channel', 'page'), $k ? ['channel' => $k] : [])) }}">{{ $label }}</a>
+    @endforeach
+</div>
 <div class="card shadow-sm"><table class="table table-hover mb-0">
     <thead><tr><th>Invoice</th><th>Date</th><th>Branch</th><th>Customer</th><th>Cashier</th><th>Payment</th><th class="text-end">Total</th><th></th></tr></thead>
     @forelse($sales as $s)

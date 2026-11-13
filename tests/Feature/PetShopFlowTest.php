@@ -103,7 +103,7 @@ class PetShopFlowTest extends TestCase
         $this->actingAs($ub)->get('/sales?branch_id='.$a->id)->assertOk()->assertDontSee($sale->invoice_no);
         $this->actingAs($ub)->get('/admin/branches')->assertForbidden();
         $this->actingAs($ub)->post('/admin/transfers', [])->assertForbidden();
-        $this->actingAs($admin)->get('/pos')->assertForbidden();
+        $this->actingAs($admin)->get('/pos')->assertOk(); // the main admin can bill too (see OrdersTest)
         $this->actingAs($admin)->get('/sales/'.$sale->id)->assertOk();
     }
 
